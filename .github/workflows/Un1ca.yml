@@ -1,0 +1,38 @@
+name: "Build UN1CA"
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: "Device"
+        required: true
+        default: "a35x"
+      debug_build:
+        description: "Debug build"
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: "Build"
+        run: |
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          source buildenv.sh ${{ github.event.inputs.device }}
+          run_cmd make_rom --build-rom-zip
+
+      - name: "Upload"
+        uses: actions/upload-artifact@v4
+        with:
+          path: out/*.zip
+          if-no-files-found: ignore
+
