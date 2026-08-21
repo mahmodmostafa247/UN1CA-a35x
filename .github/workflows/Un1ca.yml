@@ -64,7 +64,7 @@ jobs:
 
       - name: "Clone forked repo"
         run: |
-          git clone --recurse-submodules -b ${{ github.event.inputs.device }} --single-branch https://github.com/mahmodmostafa247/UN1CA-a35x.git UN1CA
+          git clone --recurse-submodules https://github.com/mahmodmostafa247/UN1CA-a35x.git UN1CA
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -104,6 +104,16 @@ jobs:
           path: UN1CA/out/*target_files*.zip
           if-no-files-found: ignore
 
+      - name: "Notify Telegram Channel"
+        if: ${{ github.event.inputs.notify_telegram_bot == true }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            UN1CA has been built successfully
+            Action ID: ${{ github.run_id }}
+            Device: ${{ github.event.inputs.device }}
       - name: "Notify Telegram Channel"
         if: ${{ github.event.inputs.notify_telegram_bot == true }}
         uses: appleboy/telegram-action@master
