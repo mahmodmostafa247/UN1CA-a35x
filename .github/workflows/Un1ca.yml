@@ -6,10 +6,10 @@ on:
       device:
         description: "Device"
         required: true
-        default: "a51"
+        default: "a35"
         type: choice
         options:
-          - "a51"
+          - "a35"
 
       debug_build:
         description: "Debug build"
