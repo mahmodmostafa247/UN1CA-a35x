@@ -1,5 +1,3 @@
-# This is a basic workflow to try to build https://github.com/salvogiangri/UN1CA under Github Actions
-
 name: "Build UN1CA under Github Actions"
 
 on:
@@ -8,19 +6,17 @@ on:
       device:
         description: "Device"
         required: true
-        default: "a35x"
+        default: "a51"
         type: choice
         options:
-          - "a12s"
-          - "a22"
-          - "a21s"
           - "a51"
-          - "a35x"
+
       debug_build:
         description: "Debug build"
         required: true
         default: false
         type: boolean
+
       notify_telegram_bot:
         description: "Notify using telegram bot (Make sure you set up the secrets with variables: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)"
         required: true
@@ -34,6 +30,7 @@ jobs:
   build:
     name: "Build UN1CA"
     runs-on: ubuntu-24.04
+
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
@@ -61,21 +58,14 @@ jobs:
           DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
             7zip attr ccache clang ffmpeg \
             libbrotli-dev libbz2-dev libgtest-dev libprotobuf-dev libunwind-dev libpcre2-dev \
-            libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp openjdk-17-jdk rsync
-          sudo modprobe erofs || true
-          sudo modprobe f2fs || true
+            libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp openjdk-17-jdk
+          sudo modprobe erofs f2fs
 
-      - name: "Clone Base Source & Setup Target"
+      - name: "Clone forked repo"
         run: |
-          git clone --recurse-submodules https://github.com/salvogiangri/UN1CA UN1CA
+          git clone --recurse-submodules -b ${{ github.event.inputs.device }} --single-branch https://github.com/xv2ice/UN1CA-A51 UN1CA
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
-          # Copy target/a35x from current repo into cloned UN1CA
-          mkdir -p UN1CA/target/a35x
-          if [ -d "target/a35x" ]; then
-            cp -r target/a35x/* UN1CA/target/a35x/
-          fi
 
       - name: "Build it!"
         run: |
@@ -88,31 +78,34 @@ jobs:
           fi
           run_cmd make_rom --build-rom-zip
           cd ..
+        continue-on-error: true
 
       - name: "Pull Finished ROM"
-        if: always()
         run: |
-          mkdir -p out
-          echo "Checking output directory..."
-          if [ -d "UN1CA/out" ]; then
-            ls -lah UN1CA/out
-            cp UN1CA/out/*.zip out/ || true
-          fi
+          mkdir out
+          echo "Checking before copying to out directory"
+          ls UN1CA/out
+          cp UN1CA/out/*.zip out
 
-      - name: "Upload flasheable zip to Github Artifact"
+      - name: "Upload flashable zip to Github Artifact"
         uses: actions/upload-artifact@v4
         with:
-          name: UN1CA-ROM-${{ github.event.inputs.device }}
-          path: out/*.zip
+          path: out/UN1CA_*${{ github.event.inputs.device }}*.zip
+          if-no-files-found: ignore
+
+      - name: "Upload target_files.zip to Github Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          path: out/${{ github.event.inputs.device }}_*-target_files.zip
           if-no-files-found: ignore
 
       - name: "Notify Telegram Channel"
-        if: ${{ github.event.inputs.notify_telegram_bot == 'true' }}
+        if: ${{ github.event.inputs.notify_telegram_bot == true }}
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            UN1CA has been built sucessfully
+            UN1CA has been built successfully
             Action ID: ${{ github.run_id }}
             Device: ${{ github.event.inputs.device }}
