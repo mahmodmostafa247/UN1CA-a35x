@@ -6,10 +6,10 @@ on:
       device:
         description: "Device"
         required: true
-        default: "a35"
+        default: "a35x"
         type: choice
         options:
-          - "a35"
+          - "a35x"
 
       debug_build:
         description: "Debug build"
@@ -18,7 +18,7 @@ on:
         type: boolean
 
       notify_telegram_bot:
-        description: "Notify using telegram bot (Make sure you set up the secrets with variables: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)"
+        description: "Notify using telegram bot"
         required: true
         default: false
         type: boolean
@@ -56,14 +56,15 @@ jobs:
           sudo apt update
           sudo apt upgrade -y
           DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
-            7zip attr ccache clang ffmpeg \
-            libbrotli-dev libbz2-dev libgtest-dev libprotobuf-dev libunwind-dev libpcre2-dev \
-            libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp openjdk-17-jdk
-          sudo modprobe erofs f2fs
+            7zip attr bc cpio ccache clang ffmpeg \
+            libbrotli-dev libbz2-dev libgtest-dev liblz4-dev libprotobuf-dev libunwind-dev libpcre2-dev \
+            libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp openjdk-17-jdk rsync
+          sudo modprobe erofs || true
+          sudo modprobe f2fs || true
 
       - name: "Clone forked repo"
         run: |
-          git clone --recurse-submodules -b ${{ github.event.inputs.device }} --single-branch https://github.com/mahmodmostafa247/UN1CA-a35x.git
+          git clone --recurse-submodules -b ${{ github.event.inputs.device }} --single-branch https://github.com/mahmodmostafa247/UN1CA-a35x.git UN1CA
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -78,25 +79,29 @@ jobs:
           fi
           run_cmd make_rom --build-rom-zip
           cd ..
-        continue-on-error: true
 
       - name: "Pull Finished ROM"
+        if: always()
         run: |
-          mkdir out
-          echo "Checking before copying to out directory"
-          ls UN1CA/out
-          cp UN1CA/out/*.zip out
+          mkdir -p out
+          echo "Checking output directory..."
+          if [ -d "UN1CA/out" ]; then
+            ls -lah UN1CA/out
+            cp UN1CA/out/*.zip out/ || true
+          fi
 
       - name: "Upload flashable zip to Github Artifact"
         uses: actions/upload-artifact@v4
         with:
-          path: out/UN1CA_*${{ github.event.inputs.device }}*.zip
+          name: UN1CA-ROM-${{ github.event.inputs.device }}
+          path: out/*.zip
           if-no-files-found: ignore
 
       - name: "Upload target_files.zip to Github Artifact"
         uses: actions/upload-artifact@v4
         with:
-          path: out/${{ github.event.inputs.device }}_*-target_files.zip
+          name: Target-Files-${{ github.event.inputs.device }}
+          path: UN1CA/out/*target_files*.zip
           if-no-files-found: ignore
 
       - name: "Notify Telegram Channel"
