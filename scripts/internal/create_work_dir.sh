@@ -119,6 +119,8 @@ COPY_TARGET_FIRMWARE()
             EVAL "cp -a \"$FW_DIR/$TARGET_FIRMWARE_PATH/fs_config-$f\" \"$WORK_DIR/configs/fs_config-$f\"" || exit 1
             if [[ "$f" == "vendor" ]]; then
                 LOG_STEP_IN
+                # مسح السطر المسبب لمشكلة التجميع في الـ TEE
+                sed -i '/ffffffff-0000-0000-0000-000000000030/d' "$WORK_DIR/configs/file_context-vendor"
                 SET_PROP "vendor" "ro.config.ringtone" "$(GET_PROP "$FW_DIR/$SOURCE_FIRMWARE_PATH/vendor/build.prop" "ro.config.ringtone")"
                 SET_PROP "vendor" "ro.config.notification_sound" "$(GET_PROP "$FW_DIR/$SOURCE_FIRMWARE_PATH/vendor/build.prop" "ro.config.notification_sound")"
                 SET_PROP "vendor" "ro.config.alarm_alert" "$(GET_PROP "$FW_DIR/$SOURCE_FIRMWARE_PATH/vendor/build.prop" "ro.config.alarm_alert")"
